@@ -1,73 +1,68 @@
 class FileHandler {
     constructor() {
-        this.files = new Map();
-        this.selectedFiles = new Set();
-        this.extensionFilter = new Set();
+        this.currentPath = '/';
+        this.selectedFiles = new Map(); // path -> content
     }
 
-    setExtensionFilter(filterString) {
-        this.extensionFilter.clear();
-        if (filterString.trim()) {
-            const extensions = filterString.split(',')
-                .map(ext => ext.trim())
-                .map(ext => ext.startsWith('.') ? ext.toLowerCase() : '.' + ext.toLowerCase());
-            extensions.forEach(ext => this.extensionFilter.add(ext));
+    async listDirectory(path) {
+        try {
+            const response = await fetch('/list-directory', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ path }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            return data.items;
+        } catch (error) {
+            console.error('Error listing directory:', error);
+            throw error;
         }
-        return this.updateFileList();
     }
 
-    async handleFiles(fileList) {
-        this.files.clear();
-        this.selectedFiles.clear();
-
-        for (const file of fileList) {
-            const extension = '.' + file.name.split('.').pop().toLowerCase();
-            if (this.extensionFilter.size === 0 || this.extensionFilter.has(extension)) {
-                this.files.set(file.name, file);
-            }
+    async readFile(path) {
+        try {
+            const response = await fetch('/read-file', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ path }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error);
+            return data.content;
+        } catch (error) {
+            console.error('Error reading file:', error);
+            throw error;
         }
-
-        return Array.from(this.files.keys());
     }
 
-    updateFileList() {
-        const newFiles = new Map();
-        for (const [name, file] of this.files) {
-            const extension = '.' + name.split('.').pop().toLowerCase();
-            if (this.extensionFilter.size === 0 || this.extensionFilter.has(extension)) {
-                newFiles.set(name, file);
-            }
-        }
-        this.files = newFiles;
-        this.selectedFiles = new Set(
-            Array.from(this.selectedFiles).filter(name => this.files.has(name))
-        );
-        return Array.from(this.files.keys());
-    }
-
-    toggleFileSelection(fileName) {
-        if (this.selectedFiles.has(fileName)) {
-            this.selectedFiles.delete(fileName);
+    async toggleFileSelection(path) {
+        if (this.selectedFiles.has(path)) {
+            this.selectedFiles.delete(path);
         } else {
-            this.selectedFiles.add(fileName);
-        }
-        return this.selectedFiles.size > 0;
-    }
-
-    async aggregateContent() {
-        let aggregatedContent = '';
-        for (const fileName of this.selectedFiles) {
-            const file = this.files.get(fileName);
-            if (file) {
-                try {
-                    const content = await file.text();
-                    aggregatedContent += `// File: ${fileName}\n${content}\n\n`;
-                } catch (error) {
-                    console.error(`Error reading file ${fileName}:`, error);
-                    aggregatedContent += `// Error reading file: ${fileName}\n\n`;
-                }
+            try {
+                const content = await this.readFile(path);
+                this.selectedFiles.set(path, content);
+            } catch (error) {
+                throw error;
             }
         }
-        return aggregatedContent;
+        return this.getAggregatedContent();
+    }
+
+    getAggregatedContent() {
+        let content = '';
+        for (const [path, fileContent] of this.selectedFiles) {
+            content += `// File: ${path}\n${fileContent}\n\n`;
+        }
+        return content;
+    }
+
+    getSelectedFiles() {
+        return Array.from(this.selectedFiles.keys());
     }
 }

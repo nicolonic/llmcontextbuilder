@@ -9,57 +9,41 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/custom.css') }}">
 </head>
 <body>
-    <div class="container py-4">
+    <div class="container-fluid py-4">
         <header class="pb-3 mb-4 border-bottom">
             <h1 class="display-5 fw-bold">File Content Aggregator</h1>
         </header>
 
         <div class="row g-4">
             <div class="col-md-4">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-body">
-                        <h5 class="card-title">File Selection</h5>
-                        <input type="file" id="fileInput" multiple class="form-control mb-3">
-                        
-                        <h6 class="mb-2">Extension Filter</h6>
-                        <div class="input-group mb-3">
-                            <input type="text" id="extensionFilter" class="form-control" 
-                                   placeholder="e.g., .js,.py,.txt">
-                            <button class="btn btn-outline-secondary" type="button" id="applyFilter">
-                                Apply Filter
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title mb-0">Project Explorer</h5>
+                            <button id="selectFolderBtn" class="btn btn-primary btn-sm">
+                                <i class="bi bi-folder-plus"></i> Select Folder
                             </button>
+                        </div>
+                        <div id="directoryTree" class="directory-tree">
+                            <!-- Directory structure will be displayed here -->
                         </div>
                     </div>
                 </div>
             </div>
 
             <div class="col-md-8">
-                <div class="card">
+                <div class="card h-100">
                     <div class="card-body">
-                        <h5 class="card-title">Selected Files</h5>
-                        <div id="fileList" class="list-group mb-3">
-                            <!-- Files will be listed here -->
-                        </div>
-                        
-                        <div class="d-flex justify-content-between mb-3">
-                            <button id="aggregateBtn" class="btn btn-primary" disabled>
-                                <i class="bi bi-collection"></i> Aggregate Content
-                            </button>
-                            <button id="copyBtn" class="btn btn-secondary" disabled>
-                                <i class="bi bi-clipboard"></i> Copy to Clipboard
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="card-title mb-0">Aggregated Content</h5>
+                            <button id="copyBtn" class="btn btn-secondary btn-sm">
+                                <i class="bi bi-clipboard"></i> Copy All
                             </button>
                         </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="row mt-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-body">
-                        <h5 class="card-title">Aggregated Content</h5>
-                        <textarea id="outputArea" class="form-control" rows="15" readonly></textarea>
+                        <div id="selectedFiles" class="mb-3 selected-files">
+                            <!-- Selected files will be listed here -->
+                        </div>
+                        <textarea id="outputArea" class="form-control h-100" readonly></textarea>
                     </div>
                 </div>
             </div>

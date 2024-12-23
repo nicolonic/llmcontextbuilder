@@ -6,74 +6,94 @@ class UIController {
     }
 
     initializeElements() {
-        this.fileInput = document.getElementById('fileInput');
-        this.extensionFilter = document.getElementById('extensionFilter');
-        this.applyFilterBtn = document.getElementById('applyFilter');
-        this.fileList = document.getElementById('fileList');
-        this.aggregateBtn = document.getElementById('aggregateBtn');
-        this.copyBtn = document.getElementById('copyBtn');
+        this.selectFolderBtn = document.getElementById('selectFolderBtn');
+        this.directoryTree = document.getElementById('directoryTree');
+        this.selectedFiles = document.getElementById('selectedFiles');
         this.outputArea = document.getElementById('outputArea');
+        this.copyBtn = document.getElementById('copyBtn');
     }
 
     attachEventListeners() {
-        this.fileInput.addEventListener('change', () => this.handleFileSelect());
-        this.applyFilterBtn.addEventListener('click', () => this.applyFilter());
-        this.aggregateBtn.addEventListener('click', () => this.aggregateContent());
+        this.selectFolderBtn.addEventListener('click', () => this.handleFolderSelect());
         this.copyBtn.addEventListener('click', () => this.copyToClipboard());
     }
 
-    async handleFileSelect() {
-        const fileNames = await this.fileHandler.handleFiles(this.fileInput.files);
-        this.updateFileList(fileNames);
-        this.updateButtons();
+    async handleFolderSelect() {
+        const path = prompt('Enter the folder path:');
+        if (path) {
+            try {
+                await this.loadDirectory(path);
+            } catch (error) {
+                this.showToast(`Error: ${error.message}`, true);
+            }
+        }
     }
 
-    applyFilter() {
-        const fileNames = this.fileHandler.setExtensionFilter(this.extensionFilter.value);
-        this.updateFileList(fileNames);
-        this.updateButtons();
+    async loadDirectory(path) {
+        try {
+            const items = await this.fileHandler.listDirectory(path);
+            this.renderDirectoryTree(items);
+        } catch (error) {
+            this.showToast(`Failed to load directory: ${error.message}`, true);
+        }
     }
 
-    updateFileList(fileNames) {
-        this.fileList.innerHTML = '';
-        fileNames.forEach(fileName => {
-            const item = document.createElement('button');
-            item.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-            item.innerHTML = `
-                <span>${fileName}</span>
-                <span class="badge bg-primary rounded-pill">
-                    ${(this.fileHandler.files.get(fileName).size / 1024).toFixed(2)} KB
-                </span>
+    renderDirectoryTree(items) {
+        this.directoryTree.innerHTML = '';
+        items.sort((a, b) => {
+            if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
+            return a.name.localeCompare(b.name);
+        }).forEach(item => {
+            const element = document.createElement('div');
+            element.className = 'directory-item';
+            element.innerHTML = `
+                <i class="bi ${item.type === 'directory' ? 'bi-folder' : 'bi-file-text'}"></i>
+                <span>${item.name}</span>
             `;
-            item.addEventListener('click', () => this.toggleFileSelection(item, fileName));
-            this.fileList.appendChild(item);
+            if (item.type === 'directory') {
+                element.addEventListener('click', () => this.loadDirectory(item.path));
+            } else {
+                element.addEventListener('dblclick', () => this.handleFileSelect(item.path));
+            }
+            this.directoryTree.appendChild(element);
         });
     }
 
-    toggleFileSelection(element, fileName) {
-        const hasSelected = this.fileHandler.toggleFileSelection(fileName);
-        element.classList.toggle('active');
-        this.updateButtons(hasSelected);
+    async handleFileSelect(path) {
+        try {
+            const content = await this.fileHandler.toggleFileSelection(path);
+            this.updateSelectedFiles();
+            this.outputArea.value = content;
+        } catch (error) {
+            this.showToast(`Error selecting file: ${error.message}`, true);
+        }
     }
 
-    async aggregateContent() {
-        const content = await this.fileHandler.aggregateContent();
-        this.outputArea.value = content;
-        this.copyBtn.disabled = !content;
+    updateSelectedFiles() {
+        const files = this.fileHandler.getSelectedFiles();
+        this.selectedFiles.innerHTML = files.map(path => `
+            <div class="selected-file">
+                <i class="bi bi-file-text"></i>
+                <span>${path.split('/').pop()}</span>
+                <button class="btn btn-sm btn-danger" onclick="ui.removeFile('${path}')">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+        `).join('');
+    }
+
+    async removeFile(path) {
+        await this.fileHandler.toggleFileSelection(path);
+        this.updateSelectedFiles();
     }
 
     async copyToClipboard() {
         try {
             await navigator.clipboard.writeText(this.outputArea.value);
             this.showToast('Content copied to clipboard!');
-        } catch (err) {
+        } catch (error) {
             this.showToast('Failed to copy content', true);
         }
-    }
-
-    updateButtons(hasSelected = false) {
-        this.aggregateBtn.disabled = !hasSelected;
-        this.copyBtn.disabled = !this.outputArea.value;
     }
 
     showToast(message, isError = false) {
@@ -97,5 +117,5 @@ class UIController {
 
 // Initialize the UI controller when the DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new UIController();
+    window.ui = new UIController();
 });
