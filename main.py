@@ -4,6 +4,9 @@ from flask import Flask, render_template
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+# Suppress Werkzeug warning
+werkzeug_logger = logging.getLogger('werkzeug')
+werkzeug_logger.setLevel(logging.ERROR)
 
 app = Flask(__name__)
 app.secret_key = "file-aggregator-secret-key"
