@@ -38,10 +38,13 @@
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.5rem;
-    background-color: var(--bs-primary-bg-subtle);
+    padding: 0.75rem;
+    background-color: var(--bs-tertiary-bg);
     margin-bottom: 0.5rem;
-    border-radius: 0.25rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-emphasis-color);
+    font-weight: 500;
 }
 
 /* Content area styling */
