@@ -44,13 +44,29 @@
     border-radius: 0.25rem;
 }
 
-/* Output area styling */
+/* Content area styling */
+.content-area {
+    background-color: var(--bs-tertiary-bg);
+    border-radius: 0.375rem;
+    padding: 1rem;
+}
+
+#promptInput {
+    font-family: monospace;
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-tertiary-color);
+    border-color: var(--bs-border-color);
+}
+
 #outputArea {
     font-family: monospace;
     white-space: pre;
     resize: vertical;
-    height: calc(100vh - 450px);
+    height: calc(100vh - 550px);
     min-height: 200px;
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-tertiary-color);
+    border-color: var(--bs-border-color);
 }
 
 #fileList {

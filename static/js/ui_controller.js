@@ -11,11 +11,13 @@ class UIController {
         this.selectedFiles = document.getElementById('selectedFiles');
         this.outputArea = document.getElementById('outputArea');
         this.copyBtn = document.getElementById('copyBtn');
+        this.promptInput = document.getElementById('promptInput');
     }
 
     attachEventListeners() {
         this.folderInput.addEventListener('change', (e) => this.handleFolderSelect(e));
         this.copyBtn.addEventListener('click', () => this.copyToClipboard());
+        this.promptInput.addEventListener('input', () => this.updateOutput());
     }
 
     async handleFolderSelect(event) {
@@ -117,7 +119,7 @@ class UIController {
             const path = file.webkitRelativePath;
             await this.fileHandler.toggleFileSelection(path, content);
             this.updateSelectedFiles();
-            this.outputArea.value = this.fileHandler.getAggregatedContent();
+            this.updateOutput();
         } catch (error) {
             this.showToast(`Error selecting file: ${error.message}`, true);
         }
@@ -128,7 +130,7 @@ class UIController {
         this.selectedFiles.innerHTML = files.map(path => `
             <div class="selected-file">
                 <i class="bi bi-file-text"></i>
-                <span>${path.split('/').pop()}</span>
+                <span>${path}</span>
                 <button class="btn btn-sm btn-danger" onclick="ui.removeFile('${path}')">
                     <i class="bi bi-x"></i>
                 </button>
@@ -136,10 +138,15 @@ class UIController {
         `).join('');
     }
 
+    updateOutput() {
+        const prompt = this.promptInput.value;
+        this.outputArea.value = this.fileHandler.getFinalContent(prompt);
+    }
+
     async removeFile(path) {
         await this.fileHandler.toggleFileSelection(path);
         this.updateSelectedFiles();
-        this.outputArea.value = this.fileHandler.getAggregatedContent();
+        this.updateOutput();
     }
 
     async copyToClipboard() {

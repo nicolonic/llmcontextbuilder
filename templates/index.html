@@ -35,6 +35,10 @@
             <div class="col-md-8">
                 <div class="card h-100">
                     <div class="card-body">
+                        <div class="mb-3">
+                            <label for="promptInput" class="form-label">Prompt</label>
+                            <textarea id="promptInput" class="form-control" rows="3" placeholder="Enter your prompt here..."></textarea>
+                        </div>
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <h5 class="card-title mb-0">Aggregated Content</h5>
                             <button id="copyBtn" class="btn btn-secondary btn-sm">
@@ -44,7 +48,9 @@
                         <div id="selectedFiles" class="mb-3 selected-files">
                             <!-- Selected files will be listed here -->
                         </div>
-                        <textarea id="outputArea" class="form-control h-100" readonly></textarea>
+                        <div class="content-area">
+                            <textarea id="outputArea" class="form-control h-100" readonly></textarea>
+                        </div>
                     </div>
                 </div>
             </div>
