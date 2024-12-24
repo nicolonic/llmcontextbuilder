@@ -6,7 +6,7 @@ class UIController {
     }
 
     initializeElements() {
-        this.selectFolderBtn = document.getElementById('selectFolderBtn');
+        this.folderInput = document.getElementById('folderInput');
         this.directoryTree = document.getElementById('directoryTree');
         this.selectedFiles = document.getElementById('selectedFiles');
         this.outputArea = document.getElementById('outputArea');
@@ -14,56 +14,110 @@ class UIController {
     }
 
     attachEventListeners() {
-        this.selectFolderBtn.addEventListener('click', () => this.handleFolderSelect());
+        this.folderInput.addEventListener('change', (e) => this.handleFolderSelect(e));
         this.copyBtn.addEventListener('click', () => this.copyToClipboard());
     }
 
-    async handleFolderSelect() {
-        const path = prompt('Enter the folder path:');
-        if (path) {
+    async handleFolderSelect(event) {
+        const files = Array.from(event.target.files);
+        if (files.length > 0) {
             try {
-                await this.loadDirectory(path);
+                const rootPath = this.getRootPath(files[0]);
+                const fileTree = this.buildFileTree(files, rootPath);
+                this.renderDirectoryTree(fileTree, this.directoryTree);
             } catch (error) {
                 this.showToast(`Error: ${error.message}`, true);
             }
         }
     }
 
-    async loadDirectory(path) {
-        try {
-            const items = await this.fileHandler.listDirectory(path);
-            this.renderDirectoryTree(items);
-        } catch (error) {
-            this.showToast(`Failed to load directory: ${error.message}`, true);
-        }
+    getRootPath(file) {
+        const parts = file.webkitRelativePath.split('/');
+        return parts[0];
     }
 
-    renderDirectoryTree(items) {
-        this.directoryTree.innerHTML = '';
-        items.sort((a, b) => {
+    buildFileTree(files, rootPath) {
+        const tree = {
+            name: rootPath,
+            type: 'directory',
+            children: new Map()
+        };
+
+        files.forEach(file => {
+            const parts = file.webkitRelativePath.split('/');
+            let current = tree;
+
+            // Skip the first part as it's the root directory
+            for (let i = 1; i < parts.length; i++) {
+                const part = parts[i];
+                const isFile = i === parts.length - 1;
+
+                if (isFile) {
+                    current.children.set(part, {
+                        name: part,
+                        type: 'file',
+                        file: file
+                    });
+                } else {
+                    if (!current.children.has(part)) {
+                        current.children.set(part, {
+                            name: part,
+                            type: 'directory',
+                            children: new Map()
+                        });
+                    }
+                    current = current.children.get(part);
+                }
+            }
+        });
+
+        return tree;
+    }
+
+    renderDirectoryTree(node, container, level = 0) {
+        container.innerHTML = ''; // Clear only on root level
+        const sortedItems = Array.from(node.children.values()).sort((a, b) => {
             if (a.type !== b.type) return a.type === 'directory' ? -1 : 1;
             return a.name.localeCompare(b.name);
-        }).forEach(item => {
+        });
+
+        sortedItems.forEach(item => {
             const element = document.createElement('div');
             element.className = 'directory-item';
+            element.style.paddingLeft = `${level * 1.5}rem`;
+
             element.innerHTML = `
                 <i class="bi ${item.type === 'directory' ? 'bi-folder' : 'bi-file-text'}"></i>
                 <span>${item.name}</span>
             `;
+
             if (item.type === 'directory') {
-                element.addEventListener('click', () => this.loadDirectory(item.path));
+                const childContainer = document.createElement('div');
+                childContainer.style.display = 'none';
+
+                element.addEventListener('click', () => {
+                    const isExpanded = childContainer.style.display !== 'none';
+                    childContainer.style.display = isExpanded ? 'none' : 'block';
+                    element.querySelector('i').className = `bi ${isExpanded ? 'bi-folder' : 'bi-folder-open'}`;
+                });
+
+                container.appendChild(element);
+                container.appendChild(childContainer);
+                this.renderDirectoryTree(item, childContainer, level + 1);
             } else {
-                element.addEventListener('dblclick', () => this.handleFileSelect(item.path));
+                element.addEventListener('dblclick', () => this.handleFileSelect(item.file));
+                container.appendChild(element);
             }
-            this.directoryTree.appendChild(element);
         });
     }
 
-    async handleFileSelect(path) {
+    async handleFileSelect(file) {
         try {
-            const content = await this.fileHandler.toggleFileSelection(path);
+            const content = await file.text();
+            const path = file.webkitRelativePath;
+            await this.fileHandler.toggleFileSelection(path, content);
             this.updateSelectedFiles();
-            this.outputArea.value = content;
+            this.outputArea.value = this.fileHandler.getAggregatedContent();
         } catch (error) {
             this.showToast(`Error selecting file: ${error.message}`, true);
         }
@@ -85,6 +139,7 @@ class UIController {
     async removeFile(path) {
         await this.fileHandler.toggleFileSelection(path);
         this.updateSelectedFiles();
+        this.outputArea.value = this.fileHandler.getAggregatedContent();
     }
 
     async copyToClipboard() {
