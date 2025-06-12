@@ -1246,11 +1246,23 @@ class UIController {
         
         try {
             console.log('Sending request to /api/generate-prompt');
+            console.log('Auth token available:', typeof authToken !== 'undefined' ? 'Yes' : 'No');
+            console.log('Window.fetch is overridden:', window.fetch !== window.originalFetch);
+            
+            // Build headers with auth token if available
+            const headers = {
+                'Content-Type': 'application/json'
+            };
+            
+            // Add auth header if token is available (fallback if fetch override isn't working)
+            if (typeof authToken !== 'undefined' && authToken) {
+                headers['Authorization'] = `Bearer ${authToken}`;
+                console.log('Manually adding auth header');
+            }
+            
             const response = await fetch('/api/generate-prompt', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: headers,
                 body: JSON.stringify({ input: currentText })
             });
             

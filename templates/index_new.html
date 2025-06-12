@@ -458,13 +458,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/overlay.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/gfm/gfm.min.js"></script>
     
-    <script src="{{ url_for('static', filename='js/file_handler.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/virtual_scroll.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/ui_controller_new.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/ui_bootstrap.js') }}"></script>
     </div> <!-- Close mainApp -->
 
-    <!-- Supabase Auth Script -->
+    <!-- Supabase Auth Script - MUST come before UI controller scripts -->
     <script>
         // Initialize Supabase client
         const SUPABASE_URL = 'https://syumnssymzdnzgcvxwgm.supabase.co';
@@ -589,7 +585,9 @@
         // Update API headers to include authentication
         function updateAPIHeaders() {
             // Override fetch to include auth header
-            const originalFetch = window.fetch;
+            if (!window.originalFetch) {
+                window.originalFetch = window.fetch;
+            }
             window.fetch = function(url, options = {}) {
                 if (url.startsWith('/api/') && authToken) {
                     options.headers = {
@@ -597,9 +595,20 @@
                         'Authorization': `Bearer ${authToken}`
                     };
                 }
-                return originalFetch(url, options);
+                return window.originalFetch(url, options);
             };
         }
+        
+        // Apply auth headers immediately if we have a token
+        if (authToken) {
+            updateAPIHeaders();
+        }
     </script>
+    
+    <!-- Load UI Controller scripts AFTER auth setup -->
+    <script src="{{ url_for('static', filename='js/file_handler.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/virtual_scroll.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui_controller_new.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui_bootstrap.js') }}"></script>
 </body>
 </html>
