@@ -846,6 +846,34 @@ body {
     margin-left: var(--space-3);
 }
 
+/* Directory-specific styles */
+.directory-heat-bar {
+    opacity: 0.8;
+    height: 6px;
+    max-width: 120px;
+}
+
+.directory-file-count {
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-left: auto;
+    margin-right: var(--space-2);
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+/* Light mode directory info visibility */
+[data-bs-theme="light"] .directory-file-count {
+    color: #6b7280;
+    font-weight: 500;
+}
+
+.directory-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
 /* Remove old size badge styles */
 .size-small { color: var(--bs-success); }
 .size-medium { color: var(--bs-warning); }

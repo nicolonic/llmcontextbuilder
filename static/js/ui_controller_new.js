@@ -192,6 +192,17 @@ class UIController {
         // Show/hide preview footer
         this.previewFooter.style.display = tabName === 'preview' ? 'flex' : 'none';
         
+        // Hide batch action bar when in preview tab (preview footer has all controls)
+        if (tabName === 'preview') {
+            this.batchActionBar.style.display = 'none';
+        } else {
+            // Show batch action bar if files are selected
+            const selectedCount = this.fileHandler.getAllSelectedPaths().length;
+            if (selectedCount > 0) {
+                this.batchActionBar.style.display = 'flex';
+            }
+        }
+        
         // Update editor if needed
         if (tabName === 'preview' && this.editor) {
             setTimeout(() => this.editor.refresh(), 100);
@@ -432,8 +443,11 @@ class UIController {
         
         // Handle proceed button
         preModal.querySelector('#proceedToFolderSelect').addEventListener('click', () => {
+            // Wait for modal to be fully hidden before triggering file input
+            preModal.addEventListener('hidden.bs.modal', () => {
+                this.folderInput.click();
+            }, { once: true }); // Use once: true to ensure this only fires once
             modal.hide();
-            this.folderInput.click();
         });
         
         // Clean up when modal is closed
@@ -477,6 +491,12 @@ class UIController {
             
             if (item.type === 'file' && item.file) {
                 innerHTML += this.getTokenHeatBar(item.file.size);
+            } else if (item.type === 'directory') {
+                // Add directory size info
+                const sizeStr = this.formatBytes(item.totalSize);
+                const fileCountStr = `${item.fileCount} ${item.fileCount === 1 ? 'file' : 'files'}`;
+                const dirInfoBadge = `<span class="directory-file-count">${fileCountStr} • ${sizeStr}</span>`;
+                innerHTML += dirInfoBadge + this.getDirectoryHeatBar(item.totalSize, item.fileCount);
             }
             
             element.innerHTML = innerHTML;
@@ -565,12 +585,36 @@ class UIController {
         return 'heat-high';                                 // Red
     }
     
+    formatBytes(bytes, decimals = 1) {
+        if (bytes === 0) return '0 B';
+        
+        const k = 1024;
+        const dm = decimals < 0 ? 0 : decimals;
+        const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+        
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+    }
+    
     getTokenHeatBar(bytes) {
         const estimatedTokens = Math.round(bytes / 4);
         const percentage = Math.min(100, (estimatedTokens / 5000) * 100); // Max out at 5000 tokens
         
         return `
             <div class="token-heat-bar" title="${estimatedTokens.toLocaleString()} tokens (est.)">
+                <div class="heat-fill" style="width: ${percentage}%"></div>
+            </div>
+        `;
+    }
+
+    getDirectoryHeatBar(totalBytes, fileCount) {
+        const estimatedTokens = Math.round(totalBytes / 4);
+        const percentage = Math.min(100, (estimatedTokens / 20000) * 100); // Higher max for directories
+        const sizeStr = this.formatBytes(totalBytes);
+        
+        return `
+            <div class="token-heat-bar directory-heat-bar" title="${fileCount} files, ${sizeStr}, ~${estimatedTokens.toLocaleString()} tokens total">
                 <div class="heat-fill" style="width: ${percentage}%"></div>
             </div>
         `;
@@ -616,8 +660,8 @@ class UIController {
         const selectedCount = this.fileHandler.getAllSelectedPaths().length;
         this.previewBadge.textContent = selectedCount;
         
-        // Update batch action bar
-        if (selectedCount > 0) {
+        // Update batch action bar (only show if not in preview tab)
+        if (selectedCount > 0 && this.activeTab !== 'preview') {
             this.batchSelectedCount.textContent = selectedCount;
             this.batchActionBar.style.display = 'flex';
         } else {
@@ -1377,7 +1421,9 @@ class UIController {
         const tree = {
             name: rootPath,
             type: 'directory',
-            children: new Map()
+            children: new Map(),
+            totalSize: 0,
+            fileCount: 0
         };
 
         files.forEach(file => {
@@ -1400,7 +1446,9 @@ class UIController {
                         current.children.set(part, {
                             name: part,
                             type: 'directory',
-                            children: new Map()
+                            children: new Map(),
+                            totalSize: 0,
+                            fileCount: 0
                         });
                     }
                     current = current.children.get(part);
@@ -1408,7 +1456,30 @@ class UIController {
             }
         });
 
+        // Calculate directory sizes recursively
+        this.calculateDirectorySizes(tree);
+
         return tree;
+    }
+
+    calculateDirectorySizes(node) {
+        if (node.type === 'file') {
+            return { size: node.file.size, count: 1 };
+        }
+
+        let totalSize = 0;
+        let totalCount = 0;
+
+        for (const child of node.children.values()) {
+            const { size, count } = this.calculateDirectorySizes(child);
+            totalSize += size;
+            totalCount += count;
+        }
+
+        node.totalSize = totalSize;
+        node.fileCount = totalCount;
+
+        return { size: totalSize, count: totalCount };
     }
 
     updateFileCheckbox(path, checked) {
