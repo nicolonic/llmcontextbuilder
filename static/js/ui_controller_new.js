@@ -1745,11 +1745,15 @@ class UIController {
     }
     
     async autoDetectFiles(text) {
+        console.log('[FileDetect] autoDetectFiles called with text length:', text?.length);
+        
         if (!text || !this.allFiles || this.allFiles.length === 0) {
+            console.log('[FileDetect] No text or no files loaded');
             return; // No project loaded yet
         }
         
         const candidates = extractPathCandidates(text);
+        console.log('[FileDetect] Extracted candidates:', candidates);
         if (candidates.length === 0) return;
         
         this.showDetectSpinner();

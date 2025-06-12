@@ -11,6 +11,8 @@
 export function extractPathCandidates(text) {
     if (!text) return [];
     
+    console.log('[FileDetect] Extracting from text:', text.substring(0, 200) + '...');
+    
     // Pattern matches: one or more directory segments followed by filename.extension
     // Examples: src/utils/helper.js, path/to/file.py, components/Button.tsx
     const pattern = /([A-Za-z0-9_\-.]+\/)+[A-Za-z0-9_\-.]+\.[A-Za-z0-9]+/g;
@@ -18,10 +20,14 @@ export function extractPathCandidates(text) {
     // Also try to match paths that might be wrapped in quotes or backticks
     const quotedPattern = /["'`]([^"'`]+\.[A-Za-z0-9]+)["'`]/g;
     
+    // Additional pattern for "File: path" format
+    const filePattern = /File:\s*([A-Za-z0-9_\-.\/]+\.[A-Za-z0-9]+)/g;
+    
     const matches = new Set();
     
     // Get regular path matches
     const regularMatches = text.match(pattern) || [];
+    console.log('[FileDetect] Regular matches:', regularMatches);
     regularMatches.forEach(match => matches.add(match));
     
     // Get quoted path matches
@@ -34,7 +40,15 @@ export function extractPathCandidates(text) {
         }
     }
     
-    return Array.from(matches);
+    // Get "File:" format matches
+    let fileMatch;
+    while ((fileMatch = filePattern.exec(text)) !== null) {
+        matches.add(fileMatch[1]);
+    }
+    
+    const result = Array.from(matches);
+    console.log('[FileDetect] Total candidates found:', result);
+    return result;
 }
 
 /**
@@ -43,6 +57,12 @@ export function extractPathCandidates(text) {
  * @returns {Fuse} - Configured Fuse instance
  */
 export function createPathMatcher(paths) {
+    // Check if Fuse is available globally (loaded via CDN)
+    if (typeof Fuse === 'undefined') {
+        console.error('[FileDetect] Fuse.js not available');
+        return null;
+    }
+    
     // Prepare data with both full path and filename for weighted search
     const searchData = paths.map(path => ({
         full: path,
