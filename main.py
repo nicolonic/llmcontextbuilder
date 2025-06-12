@@ -83,6 +83,27 @@ def favicon():
     """Serve favicon.ico from static directory."""
     return send_from_directory('static', 'favicon.ico')
 
+@app.route('/auth/v1/callback')
+def auth_callback():
+    """Handle OAuth callback from Supabase."""
+    # Supabase handles the OAuth flow client-side
+    # This route just needs to serve the main page which will handle the auth state
+    return render_template('index_new.html')
+
+@app.route('/auth/debug')
+def auth_debug():
+    """Debug endpoint to check auth configuration."""
+    debug_info = {
+        'supabase_configured': bool(supabase),
+        'supabase_url': supabase_url if supabase_url else 'Not configured',
+        'has_anon_key': bool(supabase_key),
+        'google_api_configured': bool(os.environ.get('GOOGLE_API_KEY')),
+        'current_origin': request.host_url.rstrip('/'),
+        'expected_callback': request.host_url.rstrip('/') + '/auth/v1/callback',
+        'headers': dict(request.headers)
+    }
+    return jsonify(debug_info)
+
 @app.route('/api/summarize', methods=['POST'])
 @require_auth
 def summarize():

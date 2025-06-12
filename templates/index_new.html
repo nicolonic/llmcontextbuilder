@@ -179,10 +179,10 @@
     <header class="app-header">
         <div class="app-title">
             <h1>LLM Context Builder</h1>
-            <div class="workspace-selector">
-                <span id="workspaceName">Untitled Workspace</span>
-                <i class="bi bi-chevron-down"></i>
-            </div>
+            <!-- <div class="workspace-selector"> -->
+                <!-- <span id="workspaceName">Untitled Workspace</span> -->
+                <!-- <i class="bi bi-chevron-down"></i> -->
+            <!-- </div> -->
         </div>
         <div class="header-actions">
             <div id="userInfo" class="user-info" style="display: none;">
@@ -472,15 +472,31 @@
         
         const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
         
+        // Log current environment for debugging
+        console.log('OAuth Environment:', {
+            currentOrigin: window.location.origin,
+            currentHref: window.location.href,
+            isLocalhost: window.location.hostname === 'localhost',
+            isProduction: window.location.hostname === 'app.llmcontextbuilder.com',
+            supabaseUrl: SUPABASE_URL
+        });
+        
         // Auth state management
         let currentUser = null;
         let authToken = null;
         
         // Check initial auth state
         supabase.auth.getSession().then(({ data: { session } }) => {
+            console.log('Initial auth check:', { 
+                hasSession: !!session,
+                origin: window.location.origin,
+                expectedCallback: window.location.origin + '/auth/v1/callback'
+            });
             if (session) {
                 handleAuthSuccess(session);
             }
+        }).catch(err => {
+            console.error('Error checking auth session:', err);
         });
         
         // Listen for auth changes
@@ -494,16 +510,46 @@
         
         // Sign in with OAuth provider
         async function signInWithProvider(provider) {
-            const { data, error } = await supabase.auth.signInWithOAuth({
-                provider: provider,
-                options: {
-                    redirectTo: 'https://app.llmcontextbuilder.com'
+            try {
+                // Log OAuth environment for debugging
+                console.log('OAuth Environment:', {
+                    provider: provider,
+                    currentOrigin: window.location.origin,
+                    supabaseUrl: '{{ supabase_url }}',
+                    isConfigured: supabase ? 'Yes' : 'No'
+                });
+
+                // Let Supabase handle the redirect URL automatically
+                // This should use the configured redirect URLs in Supabase dashboard
+                const { data, error } = await supabase.auth.signInWithOAuth({
+                    provider: provider,
+                    options: {
+                        // Remove custom redirectTo - let Supabase handle it
+                        // Only add scopes for Google
+                        scopes: provider === 'google' ? 'email profile' : undefined
+                    }
+                });
+                
+                if (error) {
+                    console.error('OAuth Error:', error);
+                    console.error('Error details:', {
+                        provider: provider,
+                        message: error.message,
+                        status: error.status,
+                        details: error,
+                        supabaseUrl: '{{ supabase_url }}'
+                    });
+                    
+                    // Show more detailed error message
+                    let errorMessage = 'Error signing in: ' + error.message;
+                    if (error.message.includes('redirect_uri_mismatch')) {
+                        errorMessage += '\n\nPlease ensure the OAuth redirect URI is configured correctly in your provider settings.';
+                    }
+                    alert(errorMessage);
                 }
-            });
-            
-            if (error) {
-                console.error('Error signing in:', error);
-                alert('Error signing in: ' + error.message);
+            } catch (err) {
+                console.error('Unexpected error during sign in:', err);
+                alert('An unexpected error occurred. Please check the console for details.');
             }
         }
         

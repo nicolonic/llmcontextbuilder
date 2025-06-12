@@ -24,12 +24,46 @@ A web application that helps aggregate content from multiple files with a tree-b
 pip install flask email-validator flask-sqlalchemy psycopg2-binary trafilatura
 ```
 
-2. Run the application:
+2. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration values
+```
+
+3. Configure OAuth providers (see OAuth Setup section below)
+
+4. Run the application:
 ```bash
 python main.py
 ```
 
-3. Open your browser and navigate to `http://127.0.0.1:5000`
+5. Open your browser and navigate to `http://127.0.0.1:3006`
+
+## OAuth Setup
+
+### Google OAuth Configuration
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/apis/credentials)
+2. Create a new OAuth 2.0 Client ID
+3. Add Authorized JavaScript origins:
+   - `http://localhost:3006` (for local development)
+   - `https://llmcontextbuilder.com` (for production)
+   - `https://app.llmcontextbuilder.com` (for production app subdomain)
+4. Add Authorized redirect URIs:
+   - `https://YOUR_SUPABASE_PROJECT_ID.supabase.co/auth/v1/callback`
+   - Replace YOUR_SUPABASE_PROJECT_ID with your actual Supabase project ID
+5. Copy the Client ID and Client Secret
+6. Add them to your Supabase project under Authentication > Providers > Google
+
+**Important**: Google requires both the main domain and app subdomain in JavaScript origins.
+
+### Troubleshooting OAuth
+
+If you encounter OAuth issues, see [OAUTH_TROUBLESHOOTING.md](OAUTH_TROUBLESHOOTING.md) for detailed debugging steps.
+
+### Debugging OAuth Issues
+
+Visit `/auth/debug` endpoint to check your OAuth configuration status.
 
 ## Usage
 
