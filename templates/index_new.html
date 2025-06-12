@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LLM Context Builder</title>
+    
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- CodeMirror -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/theme/dracula.min.css">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/new_design.css') }}">
+    
+    <!-- Supabase -->
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.0/dist/umd/supabase.js"></script>
+    
+    <style>
+        .auth-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: var(--bs-body-bg);
+            padding: 20px;
+        }
+        .auth-card {
+            background: var(--bs-body-bg);
+            border: 1px solid var(--bs-border-color);
+            border-radius: 16px;
+            padding: 3rem 2.5rem;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 10px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+            margin: auto;
+        }
+        .auth-title {
+            text-align: center;
+            margin-bottom: 2.5rem;
+            color: var(--bs-body-color);
+            font-size: 1.75rem;
+            font-weight: 600;
+        }
+        .auth-subtitle {
+            text-align: center;
+            margin-top: -1.5rem;
+            margin-bottom: 2rem;
+            color: var(--bs-secondary-color);
+            font-size: 0.95rem;
+        }
+        .oauth-button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.75rem;
+            width: 100%;
+            padding: 0.875rem 1rem;
+            margin-bottom: 1rem;
+            border: 1px solid var(--bs-border-color);
+            border-radius: 10px;
+            background: var(--bs-body-bg);
+            color: var(--bs-body-color);
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 0.95rem;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .oauth-button:hover {
+            background: var(--bs-secondary-bg);
+            border-color: var(--bs-primary);
+            color: var(--bs-body-color);
+            text-decoration: none;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px -2px rgb(0 0 0 / 0.1);
+        }
+        .oauth-button:last-child {
+            margin-bottom: 0;
+        }
+        .auth-divider {
+            text-align: center;
+            margin: 1.5rem 0;
+            position: relative;
+            color: var(--bs-secondary-color);
+            font-size: 0.875rem;
+        }
+        .auth-divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: var(--bs-border-color);
+            z-index: 0;
+        }
+        .auth-divider span {
+            background: var(--bs-body-bg);
+            padding: 0 1rem;
+            position: relative;
+            z-index: 1;
+        }
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+        }
+        #mainApp {
+            display: none;
+        }
+        #authContainer {
+            display: block;
+        }
+        body.authenticated #mainApp {
+            display: block;
+        }
+        body.authenticated #authContainer {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- Authentication Container -->
+    <div id="authContainer" class="auth-container">
+        <div class="auth-card">
+            <h2 class="auth-title">Sign in to LLM Context Builder</h2>
+            <p class="auth-subtitle">Choose your preferred sign-in method</p>
+            <div id="authButtons">
+                <button class="oauth-button" onclick="signInWithProvider('github')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
+                    </svg>
+                    Continue with GitHub
+                </button>
+                
+                <button class="oauth-button" onclick="signInWithProvider('azure')">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M11.4 24H0L14.1 0h9.5L11.4 24zM21.6 8.6h-7.8L9.2 24h7.8l4.6-15.4z"/>
+                    </svg>
+                    Continue with Microsoft
+                </button>
+                
+                <button class="oauth-button" onclick="signInWithProvider('google')">
+                    <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                    </svg>
+                    Continue with Google
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Application (hidden until authenticated) -->
+    <div id="mainApp">
+    <!-- App Header -->
+    <header class="app-header">
+        <div class="app-title">
+            <h1>LLM Context Builder</h1>
+            <div class="workspace-selector">
+                <span id="workspaceName">Untitled Workspace</span>
+                <i class="bi bi-chevron-down"></i>
+            </div>
+        </div>
+        <div class="header-actions">
+            <div id="userInfo" class="user-info" style="display: none;">
+                <img id="userAvatar" class="user-avatar" src="" alt="User">
+                <span id="userName"></span>
+                <button class="btn btn-outline-secondary btn-sm ms-2" onclick="signOut()">
+                    <i class="bi bi-box-arrow-right"></i> Sign Out
+                </button>
+            </div>
+            <button class="icon-btn" id="themeToggle" title="Toggle theme">
+                <i class="bi bi-moon-stars"></i>
+            </button>
+            <button class="icon-btn" id="helpBtn" title="Keyboard shortcuts">
+                <i class="bi bi-question-circle"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="app-grid">
+        <!-- Left Pane: File Explorer -->
+        <aside id="explorer" class="explorer-pane">
+            <div class="explorer-toolbar">
+                <button class="btn btn-primary btn-sm" id="selectFolderBtn">
+                    <i class="bi bi-folder-plus"></i> Select Folder
+                    <input type="file" id="folderInput" webkitdirectory directory multiple style="display: none;">
+                </button>
+                <div class="btn-group btn-sm">
+                    <button class="btn btn-outline-secondary btn-sm" id="selectAllBtn" disabled>
+                        <i class="bi bi-check2-square"></i> All
+                    </button>
+                    <button class="btn btn-outline-secondary btn-sm" id="clearSelBtn" disabled>
+                        <i class="bi bi-x-square"></i> Clear
+                    </button>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm" id="ignoreRulesBtn">
+                    <i class="bi bi-gear"></i>
+                </button>
+            </div>
+            
+            <div class="explorer-filters">
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="fileSearch" placeholder="⌘K to search..." class="form-control form-control-sm">
+                </div>
+                <select id="presetSelect" class="form-select form-select-sm">
+                    <option value="">Choose preset...</option>
+                    <option value="source-code">Source Code</option>
+                    <option value="python">Python Files</option>
+                    <option value="javascript">JavaScript Files</option>
+                    <option value="documentation">Documentation</option>
+                    <option value="config">Config Files</option>
+                </select>
+            </div>
+            
+            <div id="explorerStats" class="explorer-stats">
+                <!-- File count and selection stats -->
+            </div>
+            
+            <div id="directoryTree" class="directory-tree">
+                <!-- Directory structure will be displayed here -->
+            </div>
+            
+            <!-- Floating Action Bar for Batch Operations -->
+            <div id="batchActionBar" class="batch-action-bar" style="display: none;">
+                <span class="batch-count">
+                    <i class="bi bi-check2-square"></i>
+                    <span id="batchSelectedCount">0</span> selected
+                </span>
+                <div class="batch-actions">
+                    <button class="btn btn-sm btn-outline-primary" id="batchSummarizeBtn" title="Summarize selected files">
+                        <i class="bi bi-scissors"></i> Summarise
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary" id="batchDiffBtn" title="Show only diffs">
+                        <i class="bi bi-file-diff"></i> Diff Only
+                    </button>
+                    <button class="btn btn-sm btn-outline-danger" id="batchDeselectBtn" title="Deselect all">
+                        <i class="bi bi-x-lg"></i> Deselect
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Pane: Workspace -->
+        <section id="workspace" class="workspace-pane">
+            <!-- Tab Navigation -->
+            <nav class="workspace-tabs">
+                <button class="tab-btn active" data-tab="prompt">
+                    <i class="bi bi-pencil-square"></i> Prompt
+                </button>
+                <button class="tab-btn" data-tab="preview">
+                    <i class="bi bi-file-text"></i> Preview
+                    <span class="badge text-bg-secondary ms-1" id="previewBadge">0</span>
+                </button>
+            </nav>
+
+            <!-- Tab Content -->
+            <div class="tab-content">
+                <!-- Prompt Tab -->
+                <div class="tab-pane active" id="promptTab">
+                    <div class="prompt-tab-header">
+                        <button class="btn btn-primary btn-sm" id="generatePromptBtn" disabled title="Generate Meta-Prompt">
+                            <i class="bi bi-magic"></i> Generate Meta-Prompt
+                        </button>
+                    </div>
+                    <div class="prompt-container">
+                        <textarea id="promptInput" class="form-control" placeholder="Enter your prompt here..."></textarea>
+                        <div class="prompt-footer">
+                            <div class="token-stats">
+                                <span class="stat-item">
+                                    <i class="bi bi-type"></i>
+                                    <span id="promptCharCount">0</span> chars
+                                </span>
+                                <span class="stat-item">
+                                    <i class="bi bi-coin"></i>
+                                    <span id="promptTokenCount">0</span> tokens
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Preview Tab -->
+                <div class="tab-pane" id="previewTab" style="display: none;">
+                    <div class="preview-container">
+                        <div id="selectedFiles" class="selected-files-list">
+                            <!-- Selected files will be listed here -->
+                        </div>
+                        <div class="aggregated-content">
+                            <textarea id="outputArea" class="form-control" readonly></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Sticky Footer for Preview Tab -->
+    <footer id="previewFooter" class="preview-footer" style="display: none;">
+        <div class="footer-stats">
+            <span class="stat-item">
+                <i class="bi bi-file-text"></i>
+                <span id="fileCount">0</span> files
+            </span>
+            <span class="stat-item">
+                <i class="bi bi-type"></i>
+                <span id="totalCharCount">0</span> chars
+            </span>
+            <span class="stat-item">
+                <i class="bi bi-coin"></i>
+                <span id="totalTokenCount">0</span> tokens
+            </span>
+        </div>
+        <div class="footer-actions">
+            <button class="btn btn-outline-secondary btn-sm" id="refreshAllBtn">
+                <i class="bi bi-arrow-clockwise"></i> Refresh All
+            </button>
+            <button class="btn btn-outline-warning btn-sm" id="refreshStaleBtn">
+                <i class="bi bi-arrow-clockwise"></i> Refresh Stale
+            </button>
+            <button class="btn btn-primary btn-sm" id="copyBtn">
+                <i class="bi bi-clipboard"></i> Copy All
+            </button>
+            <div class="dropdown d-inline-block">
+                <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-download"></i> Export
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" id="exportMarkdown">Markdown</a></li>
+                    <li><a class="dropdown-item" href="#" id="exportHTML">HTML</a></li>
+                    <li><a class="dropdown-item" href="#" id="exportJSON">JSON</a></li>
+                </ul>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Command Palette Overlay -->
+    <div id="commandPalette" class="command-palette" style="display: none;">
+        <div class="command-palette-input">
+            <i class="bi bi-search"></i>
+            <input type="text" id="commandInput" placeholder="Search files... (glob:*.py, type:js, size:>10kb)">
+        </div>
+        <div id="commandResults" class="command-results">
+            <!-- Search results -->
+        </div>
+    </div>
+
+    <!-- File Upload Confirmation Modal -->
+    <div class="modal fade" id="fileUploadModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">
+                        <i class="bi bi-folder-plus"></i>
+                        Load Files into Workbench
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="upload-info">
+                        <div class="upload-summary">
+                            <span class="file-count">0</span> files ready to load from folder: 
+                            <strong class="folder-name"></strong>
+                        </div>
+                        <div class="upload-note">
+                            <i class="bi bi-info-circle"></i>
+                            Files will be processed locally in your browser for analysis and aggregation. 
+                            Nothing is uploaded to any server - everything stays on your computer.
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="confirmFileUpload">
+                        <i class="bi bi-check-circle"></i> Load into Workbench
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Modal -->
+    <div class="modal fade" id="shortcutsModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Keyboard Shortcuts</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <table class="table table-sm">
+                        <tr><td><kbd>⌘K</kbd> / <kbd>Ctrl+K</kbd></td><td>Open command palette</td></tr>
+                        <tr><td><kbd>⌘B</kbd> / <kbd>Ctrl+B</kbd></td><td>Toggle explorer (mobile)</td></tr>
+                        <tr><td><kbd>⌘A</kbd> / <kbd>Ctrl+A</kbd></td><td>Select all files</td></tr>
+                        <tr><td><kbd>⌘F</kbd> / <kbd>Ctrl+F</kbd></td><td>Focus search</td></tr>
+                        <tr><td><kbd>/</kbd></td><td>Focus search in command palette</td></tr>
+                        <tr><td><kbd>Shift+Click</kbd> / <kbd>Ctrl+Click</kbd></td><td>Select range</td></tr>
+                        <tr><td><kbd>⌘Click</kbd> / <kbd>Ctrl+Click</kbd></td><td>Select folder + contents</td></tr>
+                        <tr><td><kbd>?</kbd></td><td>Show this help</td></tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ignore Rules Modal -->
+    <div class="modal fade" id="ignoreModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Ignore Rules</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted">Enter patterns to ignore (one per line). Supports glob patterns like *.log, test/*, etc.</p>
+                    <textarea id="ignoreRulesTextarea" class="form-control" rows="10" placeholder="*.log&#10;*.pyc&#10;test/*&#10;.env"></textarea>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveIgnoreRules">Save Rules</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fuse.js@7.0.0/dist/fuse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/codemirror.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/markdown/markdown.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/javascript/javascript.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/python/python.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/addon/mode/overlay.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/6.65.7/mode/gfm/gfm.min.js"></script>
+    
+    <script src="{{ url_for('static', filename='js/file_handler.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/virtual_scroll.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui_controller_new.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/ui_bootstrap.js') }}"></script>
+    </div> <!-- Close mainApp -->
+
+    <!-- Supabase Auth Script -->
+    <script>
+        // Initialize Supabase client
+        const SUPABASE_URL = 'https://syumnssymzdnzgcvxwgm.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN5dW1uc3N5bXpkbnpnY3Z4d2dtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDk2OTQ4MDQsImV4cCI6MjA2NTI3MDgwNH0.bZJqI0p2we6nqPzsO_xnDM43peeoS7QDCl_wtOL6ZXA';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Auth state management
+        let currentUser = null;
+        let authToken = null;
+        
+        // Check initial auth state
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            if (session) {
+                handleAuthSuccess(session);
+            }
+        });
+        
+        // Listen for auth changes
+        supabase.auth.onAuthStateChange((event, session) => {
+            if (event === 'SIGNED_IN' && session) {
+                handleAuthSuccess(session);
+            } else if (event === 'SIGNED_OUT') {
+                handleSignOut();
+            }
+        });
+        
+        // Sign in with OAuth provider
+        async function signInWithProvider(provider) {
+            const { data, error } = await supabase.auth.signInWithOAuth({
+                provider: provider,
+                options: {
+                    redirectTo: window.location.origin
+                }
+            });
+            
+            if (error) {
+                console.error('Error signing in:', error);
+                alert('Error signing in: ' + error.message);
+            }
+        }
+        
+        // Handle successful authentication
+        function handleAuthSuccess(session) {
+            currentUser = session.user;
+            authToken = session.access_token;
+            
+            // Show user info
+            document.getElementById('userName').textContent = currentUser.user_metadata.full_name || currentUser.email;
+            document.getElementById('userAvatar').src = currentUser.user_metadata.avatar_url || 'https://ui-avatars.com/api/?name=' + encodeURIComponent(currentUser.email);
+            document.getElementById('userInfo').style.display = 'flex';
+            
+            // Show main app, hide auth
+            document.body.classList.add('authenticated');
+            
+            // Update all API calls to include auth header
+            updateAPIHeaders();
+        }
+        
+        // Handle sign out
+        function handleSignOut() {
+            currentUser = null;
+            authToken = null;
+            document.getElementById('userInfo').style.display = 'none';
+            document.body.classList.remove('authenticated');
+        }
+        
+        // Sign out function
+        async function signOut() {
+            const { error } = await supabase.auth.signOut();
+            if (error) {
+                console.error('Error signing out:', error);
+            }
+        }
+        
+        // Update API headers to include authentication
+        function updateAPIHeaders() {
+            // Override fetch to include auth header
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                if (url.startsWith('/api/') && authToken) {
+                    options.headers = {
+                        ...options.headers,
+                        'Authorization': `Bearer ${authToken}`
+                    };
+                }
+                return originalFetch(url, options);
+            };
+        }
+    </script>
+</body>
+</html>
