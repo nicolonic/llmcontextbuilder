@@ -13,29 +13,42 @@ export function extractPathCandidates(text) {
     
     console.log('[FileDetect] Extracting from text:', text.substring(0, 200) + '...');
     
-    // Pattern matches: one or more directory segments followed by filename.extension
-    // Examples: src/utils/helper.js, path/to/file.py, components/Button.tsx
-    const pattern = /([A-Za-z0-9_\-.]+\/)+[A-Za-z0-9_\-.]+\.[A-Za-z0-9]+/g;
-    
-    // Also try to match paths that might be wrapped in quotes or backticks
-    const quotedPattern = /["'`]([^"'`]+\.[A-Za-z0-9]+)["'`]/g;
-    
-    // Additional pattern for "File: path" format
-    const filePattern = /File:\s*([A-Za-z0-9_\-.\/]+\.[A-Za-z0-9]+)/g;
-    
     const matches = new Set();
     
-    // Get regular path matches
-    const regularMatches = text.match(pattern) || [];
-    console.log('[FileDetect] Regular matches:', regularMatches);
-    regularMatches.forEach(match => matches.add(match));
+    // Pattern 1: Full paths with directories and extensions
+    // Examples: src/utils/helper.js, path/to/file.py, components/Button.tsx
+    const fullPathPattern = /([A-Za-z0-9_\-.]+\/)+[A-Za-z0-9_\-.]+\.[A-Za-z0-9]+/g;
     
-    // Get quoted path matches
+    // Pattern 2: Standalone filenames with extensions (no path required)
+    // Examples: config.json, main.py, index.js, README.md
+    const filenamePattern = /\b[A-Za-z0-9_\-]+\.(js|ts|py|java|cpp|c|h|css|html|json|xml|md|txt|jsx|tsx|vue|rb|go|rs|php|yml|yaml|toml|ini|sh|bash|sql)\b/gi;
+    
+    // Pattern 3: Quoted paths or filenames
+    const quotedPattern = /["'`]([A-Za-z0-9_\-.\/]+(?:\.[A-Za-z0-9]+)?)["`']/g;
+    
+    // Pattern 4: "File:" or "file:" format
+    const filePattern = /\b(?:File|file):\s*([A-Za-z0-9_\-.\/]+(?:\.[A-Za-z0-9]+)?)/g;
+    
+    // Pattern 5: Common file references in natural language
+    // Examples: "in config.json", "the main.py file", "update app.js"
+    const naturalPattern = /\b(?:in|the|update|edit|modify|check|open|see|file|from)\s+([A-Za-z0-9_\-]+\.[A-Za-z0-9]+)\b/gi;
+    
+    // Get full path matches
+    const fullPathMatches = text.match(fullPathPattern) || [];
+    console.log('[FileDetect] Full path matches:', fullPathMatches);
+    fullPathMatches.forEach(match => matches.add(match));
+    
+    // Get standalone filename matches
+    const filenameMatches = text.match(filenamePattern) || [];
+    console.log('[FileDetect] Filename matches:', filenameMatches);
+    filenameMatches.forEach(match => matches.add(match));
+    
+    // Get quoted matches
     let quotedMatch;
     while ((quotedMatch = quotedPattern.exec(text)) !== null) {
-        // If it looks like a path (has at least one slash or common extensions)
         const path = quotedMatch[1];
-        if (path.includes('/') || /\.(js|ts|py|java|cpp|c|h|css|html|json|xml|md|txt)$/i.test(path)) {
+        // Add if it looks like a file (has extension or is a known filename)
+        if (/\.[A-Za-z0-9]+$/.test(path) || /^(package|tsconfig|webpack\.config|babel\.config|jest\.config)/.test(path)) {
             matches.add(path);
         }
     }
@@ -44,6 +57,12 @@ export function extractPathCandidates(text) {
     let fileMatch;
     while ((fileMatch = filePattern.exec(text)) !== null) {
         matches.add(fileMatch[1]);
+    }
+    
+    // Get natural language matches
+    let naturalMatch;
+    while ((naturalMatch = naturalPattern.exec(text)) !== null) {
+        matches.add(naturalMatch[1]);
     }
     
     const result = Array.from(matches);

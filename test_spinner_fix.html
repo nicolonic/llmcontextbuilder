@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Spinner Fix</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .z-2000 { z-index: 2000; }
+        body { padding: 20px; }
+        .log-container {
+            margin-top: 20px;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            height: 200px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test File Detection Spinner Fix</h1>
+    
+    <div class="mb-3">
+        <label for="testInput" class="form-label">Type to trigger file detection (simulated):</label>
+        <textarea id="testInput" class="form-control" rows="4" placeholder="Type something like: Check the main.py file and update config.json"></textarea>
+    </div>
+    
+    <button id="triggerRapid" class="btn btn-primary">Trigger Rapid Detections</button>
+    <button id="clearLog" class="btn btn-secondary">Clear Log</button>
+    
+    <div class="log-container" id="log"></div>
+    
+    <script>
+        // Minimal mock of the spinner functionality
+        class SpinnerTest {
+            constructor() {
+                this.detectSpinner = null;
+                this._detectInProgress = 0;
+                this._detectTimeout = null;
+                this.logContainer = document.getElementById('log');
+            }
+            
+            log(message) {
+                const timestamp = new Date().toISOString().split('T')[1].slice(0, -1);
+                const entry = document.createElement('div');
+                entry.textContent = `[${timestamp}] ${message}`;
+                this.logContainer.appendChild(entry);
+                this.logContainer.scrollTop = this.logContainer.scrollHeight;
+            }
+            
+            showDetectSpinner(msg = 'Detecting files…') {
+                this._detectInProgress++;
+                this.log(`showDetectSpinner called. Counter: ${this._detectInProgress}`);
+                
+                if (this.detectSpinner) {
+                    this.log('  → Spinner already visible, returning');
+                    return;
+                }
+                
+                this.detectSpinner = document.createElement('div');
+                this.detectSpinner.className = 'position-fixed top-0 end-0 m-3 z-2000 d-flex align-items-center bg-body rounded shadow-sm px-3 py-2';
+                this.detectSpinner.innerHTML = `
+                    <div class="spinner-border spinner-border-sm me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span class="small">${msg}</span>
+                `;
+                document.body.appendChild(this.detectSpinner);
+                this.log('  → Created and displayed spinner');
+            }
+            
+            hideDetectSpinner() {
+                this._detectInProgress = Math.max(0, this._detectInProgress - 1);
+                this.log(`hideDetectSpinner called. Counter: ${this._detectInProgress}`);
+                
+                if (this._detectInProgress === 0 && this.detectSpinner) {
+                    this.detectSpinner.remove();
+                    this.detectSpinner = null;
+                    this.log('  → Removed spinner (counter reached 0)');
+                } else if (this._detectInProgress > 0) {
+                    this.log(`  → Keeping spinner visible (${this._detectInProgress} detections in progress)`);
+                }
+            }
+            
+            async simulateDetection(id) {
+                this.log(`Starting detection #${id}`);
+                this.showDetectSpinner();
+                
+                try {
+                    // Simulate async work
+                    await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+                    this.log(`Detection #${id} completed`);
+                } finally {
+                    this.hideDetectSpinner();
+                }
+            }
+        }
+        
+        const tester = new SpinnerTest();
+        
+        // Simulate the debounced input behavior
+        document.getElementById('testInput').addEventListener('input', (e) => {
+            clearTimeout(tester._detectTimeout);
+            tester._detectTimeout = setTimeout(() => {
+                const id = Date.now();
+                tester.simulateDetection(id);
+            }, 500);
+        });
+        
+        // Trigger rapid detections
+        document.getElementById('triggerRapid').addEventListener('click', () => {
+            tester.log('=== Triggering 3 rapid detections ===');
+            
+            // Simulate rapid typing that triggers multiple overlapping detections
+            setTimeout(() => tester.simulateDetection(1), 0);
+            setTimeout(() => tester.simulateDetection(2), 200);
+            setTimeout(() => tester.simulateDetection(3), 400);
+        });
+        
+        // Clear log
+        document.getElementById('clearLog').addEventListener('click', () => {
+            tester.logContainer.innerHTML = '';
+        });
+    </script>
+</body>
+</html>

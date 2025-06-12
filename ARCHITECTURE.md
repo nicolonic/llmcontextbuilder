@@ -29,6 +29,7 @@ FileAggregator-for-LLMs is a web-based tool designed to aggregate content from m
 - **Custom File Upload Flow**: User-friendly modal-based file selection experience
 - **Batch Operations**: Floating action bar for bulk file operations
 - **Token-based File Visualization**: Heat bars showing estimated token usage for each file
+- **Auto-File Detection**: Automatically detects and selects files mentioned in prompts
 
 ### Use Cases
 1. **Code Review**: Aggregate related source files for AI-assisted code review
@@ -178,6 +179,21 @@ UIController ──────┬──► FileHandler (State Management)
   - Smooth scrolling experience
   - Handles thousands of files efficiently
 
+#### 5. FileDetection (`static/js/file_detection.js`)
+- **Pattern Extraction**:
+  ```javascript
+  extractPathCandidates(text) // Extract file paths from text
+  createPathMatcher(paths)     // Fuzzy matcher setup
+  findBestMatch(candidate)     // Find matching file
+  categorizeMatches(candidates) // Group by match quality
+  ```
+- **Detection Patterns**:
+  - Full paths: `src/utils/helper.js`
+  - Standalone files: `config.json`, `main.py`
+  - Quoted paths: `"path/to/file.js"`
+  - Natural language: `"update config.json"`
+- **Fuzzy Matching**: Uses Fuse.js for approximate matches
+
 ## File Structure
 
 ```
@@ -201,6 +217,7 @@ FileAggregator-for-LLMs/
 │       ├── ui_controller_new.js # Modern UI controller
 │       ├── ui_bootstrap.js      # UI initialization
 │       ├── virtual_scroll.js    # Virtual scrolling
+│       ├── file_detection.js    # Auto-detect files from text
 │       └── worker/
 │           └── fileWorker.js    # Web Worker for async ops
 │
@@ -368,6 +385,37 @@ The application uses a centralized state pattern where:
    └──► Ready for file aggregation
 ```
 
+### Auto-File Detection Flow
+
+```
+1. User Types in Prompt
+   │
+   └──► Debounced by 500ms
+   
+2. Extract File Candidates
+   │
+   ├──► Parse various patterns
+   └──► Build candidate list
+   
+3. Match Against File Tree
+   │
+   ├──► Exact matches
+   ├──► Case-insensitive matches
+   └──► Fuzzy matches (Fuse.js)
+   
+4. Auto-Select Files
+   │
+   ├──► Check if already selected
+   ├──► Track as auto-selected
+   └──► Update UI checkboxes
+   
+5. User Edits Prompt
+   │
+   ├──► Compare new candidates
+   ├──► Remove missing auto-selections
+   └──► Keep manual selections
+```
+
 ## UI/UX Features
 
 ### 1. Custom File Upload Experience
@@ -405,6 +453,18 @@ The application uses a centralized state pattern where:
 - **Pending File Placeholders**: Clear indication of unloaded files with size info
 - **Copy All Files**: Automatically loads pending files before copying
 - **Loading States**: Visual feedback during file loading operations
+
+### 7. Auto-File Detection
+- **Real-time Detection**: Monitors prompt input for file references with 500ms debounce
+- **Pattern Recognition**: Detects various file reference formats:
+  - Full paths: `src/components/Header.js`
+  - Filenames: `package.json`, `README.md`
+  - Natural language: "update the config.json file"
+  - Quoted references: `"main.py"` or `'utils/helper.js'`
+- **Smart Selection**: Automatically selects detected files in the tree
+- **Fuzzy Matching**: Handles approximate matches for typos or partial paths
+- **Visual Feedback**: Shows "Detecting files..." spinner during processing
+- **Bidirectional Sync**: Files are automatically deselected when removed from prompt (if auto-selected)
 
 ## Performance Optimizations
 

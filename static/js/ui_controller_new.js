@@ -15,6 +15,9 @@ class UIController {
         this.detectSpinner = null;
         this._fuzzyMatcher = null;
         this._detectTimeout = null;
+        this._detectSpinnerTimeout = null;
+        this._detectInProgress = 0; // Counter for active detections
+        this.autoSelectedFiles = new Set(); // Track files selected by auto-detection
         
         this.initializeElements();
         this.attachEventListeners();
@@ -558,10 +561,19 @@ class UIController {
             } else {
                 // File item
                 checkbox.addEventListener('change', async (e) => {
+                    const path = item.file.webkitRelativePath;
+                    
                     if (e.target.checked) {
                         await this.handleFileSelect(item.file);
+                        // If manually selected, remove from auto-selected set
+                        if (this.autoSelectedFiles.has(path)) {
+                            console.log('[FileDetect] File manually selected, removing from auto-selected:', path);
+                            this.autoSelectedFiles.delete(path);
+                        }
                     } else {
                         await this.handleFileDeselect(item.file);
+                        // Also remove from auto-selected if it was there
+                        this.autoSelectedFiles.delete(path);
                     }
                     // Update parent directory states after file selection change
                     this.updateParentDirectoryStates();
@@ -1070,6 +1082,7 @@ class UIController {
         this.fileHandler.selectedFiles.clear();
         this.fileHandler.metadata.clear();
         this.fileHandler.pendingFiles.clear();
+        this.autoSelectedFiles.clear(); // Clear auto-selected tracking
         this.updateAllCheckboxes(false);
         this.updateStats();
         this.showToast('Selection cleared');
@@ -1732,23 +1745,58 @@ class UIController {
     // ===== File Detection Methods =====
     
     showDetectSpinner(msg = 'Detecting files…') {
-        if (this.detectSpinner) return;
+        this._detectInProgress++;
+        console.log('[FileDetect] showDetectSpinner - counter:', this._detectInProgress);
         
-        this.detectSpinner = document.createElement('div');
-        this.detectSpinner.className = 'position-fixed top-0 end-0 m-3 z-2000 d-flex align-items-center bg-body rounded shadow-sm px-3 py-2';
-        this.detectSpinner.innerHTML = `
-            <div class="spinner-border spinner-border-sm me-2" role="status">
-                <span class="visually-hidden">Loading...</span>
-            </div>
-            <span class="small">${msg}</span>
-        `;
-        document.body.appendChild(this.detectSpinner);
+        // Clear any existing failsafe timeout
+        if (this._detectSpinnerTimeout) {
+            clearTimeout(this._detectSpinnerTimeout);
+        }
+        
+        if (this.detectSpinner) {
+            // Spinner already visible, just update the counter
+            console.log('[FileDetect] Spinner already visible');
+        } else {
+            this.detectSpinner = document.createElement('div');
+            this.detectSpinner.className = 'position-fixed top-0 end-0 m-3 z-2000 d-flex align-items-center bg-body rounded shadow-sm px-3 py-2';
+            this.detectSpinner.innerHTML = `
+                <div class="spinner-border spinner-border-sm me-2" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <span class="small">${msg}</span>
+            `;
+            document.body.appendChild(this.detectSpinner);
+            console.log('[FileDetect] Spinner created and added to DOM');
+        }
+        
+        // Set a failsafe timeout of 10 seconds
+        this._detectSpinnerTimeout = setTimeout(() => {
+            console.warn('[FileDetect] Failsafe timeout - forcing spinner removal');
+            this._detectInProgress = 0;
+            if (this.detectSpinner) {
+                this.detectSpinner.remove();
+                this.detectSpinner = null;
+            }
+        }, 10000);
     }
     
     hideDetectSpinner() {
-        if (this.detectSpinner) {
+        this._detectInProgress = Math.max(0, this._detectInProgress - 1);
+        console.log('[FileDetect] hideDetectSpinner - counter:', this._detectInProgress);
+        
+        // Only hide if no detections are in progress
+        if (this._detectInProgress === 0 && this.detectSpinner) {
+            // Clear the failsafe timeout
+            if (this._detectSpinnerTimeout) {
+                clearTimeout(this._detectSpinnerTimeout);
+                this._detectSpinnerTimeout = null;
+            }
+            
             this.detectSpinner.remove();
             this.detectSpinner = null;
+            console.log('[FileDetect] Spinner removed from DOM');
+        } else if (this._detectInProgress > 0) {
+            console.log('[FileDetect] Spinner kept - still', this._detectInProgress, 'operations in progress');
         }
     }
     
@@ -1762,75 +1810,131 @@ class UIController {
         
         const candidates = extractPathCandidates(text);
         console.log('[FileDetect] Extracted candidates:', candidates);
-        if (candidates.length === 0) return;
+        
+        // If no candidates, check if we need to remove auto-selected files
+        if (candidates.length === 0) {
+            this.removeUnmentionedAutoSelectedFiles([]);
+            return;
+        }
         
         this.showDetectSpinner();
         
-        // Build or update fuzzy matcher
-        if (!this._fuzzyMatcher) {
-            const paths = Object.keys(this.fileMap);
-            this._fuzzyMatcher = createPathMatcher(paths);
-        }
-        
-        // Categorize matches
-        const matches = categorizeMatches(candidates, this.fileMap, this._fuzzyMatcher);
-        
-        // Process matches
-        const toLoad = [
-            ...matches.exact,
-            ...matches.fuzzy.map(f => f.matched)
-        ];
-        
-        let selectedCount = 0;
-        let alreadySelectedCount = 0;
-        
-        for (const path of toLoad) {
-            const file = this.fileMap[path];
-            if (!file) continue;
-            
-            // Check if already selected
-            if (this.fileHandler.selectedFiles.has(path) || this.fileHandler.pendingFiles.has(path)) {
-                alreadySelectedCount++;
-                continue;
+        try {
+            // Build or update fuzzy matcher
+            if (!this._fuzzyMatcher) {
+                const paths = Object.keys(this.fileMap);
+                this._fuzzyMatcher = createPathMatcher(paths);
             }
             
-            // Select the file
-            await this.handleFileSelect(file);
-            selectedCount++;
+            // Categorize matches
+            const matches = categorizeMatches(candidates, this.fileMap, this._fuzzyMatcher);
+            
+            // Process matches
+            const toLoad = [
+                ...matches.exact,
+                ...matches.fuzzy.map(f => f.matched)
+            ];
+            
+            // Remove auto-selected files that are no longer mentioned
+            this.removeUnmentionedAutoSelectedFiles(toLoad);
+            
+            let selectedCount = 0;
+            let alreadySelectedCount = 0;
+            
+            for (const path of toLoad) {
+                const file = this.fileMap[path];
+                if (!file) continue;
+                
+                // Check if already selected
+                if (this.fileHandler.selectedFiles.has(path) || this.fileHandler.pendingFiles.has(path)) {
+                    alreadySelectedCount++;
+                    continue;
+                }
+                
+                // Select the file and track as auto-selected
+                await this.handleFileSelect(file);
+                this.autoSelectedFiles.add(path);
+                selectedCount++;
+            }
+            
+            // Update stats
+            this.updateStats();
+            
+            // Show feedback
+            let message = '';
+            if (selectedCount > 0) {
+                message = `Auto-selected ${selectedCount} file${selectedCount !== 1 ? 's' : ''}`;
+            }
+            if (matches.unmatched.length > 0) {
+                if (message) message += '. ';
+                message += `${matches.unmatched.length} path${matches.unmatched.length !== 1 ? 's' : ''} not found`;
+            }
+            if (alreadySelectedCount > 0) {
+                if (message) message += '. ';
+                message += `${alreadySelectedCount} already selected`;
+            }
+            
+            if (message) {
+                this.showToast(message);
+            }
+            
+            // Log unmatched for debugging
+            if (matches.unmatched.length > 0) {
+                console.log('Unmatched file references:', matches.unmatched);
+            }
+        } catch (error) {
+            console.error('[FileDetect] Error during auto-detection:', error);
+            this.showToast('Error detecting files', 'danger');
+        } finally {
+            // Always hide spinner
+            this.hideDetectSpinner();
         }
-        
-        // Update stats
-        this.updateBatchActionBar();
-        
-        // Show feedback
-        let message = '';
-        if (selectedCount > 0) {
-            message = `Auto-selected ${selectedCount} file${selectedCount !== 1 ? 's' : ''}`;
-        }
-        if (matches.unmatched.length > 0) {
-            if (message) message += '. ';
-            message += `${matches.unmatched.length} path${matches.unmatched.length !== 1 ? 's' : ''} not found`;
-        }
-        if (alreadySelectedCount > 0) {
-            if (message) message += '. ';
-            message += `${alreadySelectedCount} already selected`;
-        }
-        
-        if (message) {
-            this.showToast(message);
-        }
-        
-        // Log unmatched for debugging
-        if (matches.unmatched.length > 0) {
-            console.log('Unmatched file references:', matches.unmatched);
-        }
-        
-        this.hideDetectSpinner();
     }
     
     // Reset fuzzy matcher when files change
     resetFuzzyMatcher() {
         this._fuzzyMatcher = null;
+    }
+    
+    // Remove auto-selected files that are no longer mentioned in the prompt
+    removeUnmentionedAutoSelectedFiles(currentlyMentioned) {
+        const mentionedSet = new Set(currentlyMentioned);
+        const toRemove = [];
+        
+        // Find auto-selected files that are no longer mentioned
+        for (const path of this.autoSelectedFiles) {
+            if (!mentionedSet.has(path)) {
+                toRemove.push(path);
+            }
+        }
+        
+        // Remove them
+        for (const path of toRemove) {
+            console.log('[FileDetect] Removing auto-selected file no longer in prompt:', path);
+            this.autoSelectedFiles.delete(path);
+            
+            // Only deselect if it's still selected (user might have manually deselected)
+            if (this.fileHandler.selectedFiles.has(path) || this.fileHandler.pendingFiles.has(path)) {
+                const file = this.fileMap[path];
+                if (file) {
+                    // Find the checkbox and uncheck it
+                    const checkbox = this.fileTree.querySelector(`input[data-path="${path}"]`);
+                    if (checkbox) {
+                        checkbox.checked = false;
+                        // Trigger the deselection
+                        this.fileHandler.deselectFile(path);
+                        this.updateDirectoryCheckboxes(file.parent);
+                    }
+                }
+            }
+        }
+        
+        // Update UI if files were removed
+        if (toRemove.length > 0) {
+            this.updateStats();
+            this.updatePreview();
+            console.log('[FileDetect] Removed', toRemove.length, 'auto-selected files');
+        }
     }
 }
 
