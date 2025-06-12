@@ -401,9 +401,14 @@ class UIController {
     }
     
     showFolderPicker() {
+        // Prevent multiple modals
+        if (document.querySelector('.folder-picker-modal')) {
+            return;
+        }
+        
         // Show a pre-selection modal
         const preModal = document.createElement('div');
-        preModal.className = 'modal fade';
+        preModal.className = 'modal fade folder-picker-modal';
         preModal.innerHTML = `
             <div class="modal-dialog">
                 <div class="modal-content">
@@ -458,17 +463,20 @@ class UIController {
         
         // Handle proceed button
         preModal.querySelector('#proceedToFolderSelect').addEventListener('click', () => {
-            // Wait for modal to be fully hidden before triggering file input
-            preModal.addEventListener('hidden.bs.modal', () => {
-                this.folderInput.click();
-            }, { once: true }); // Use once: true to ensure this only fires once
             modal.hide();
+            // Trigger file input after a short delay to ensure modal is fully hidden
+            setTimeout(() => {
+                this.folderInput.click();
+            }, 300);
         });
         
-        // Clean up when modal is closed
+        // Clean up when modal is closed or cancelled
         preModal.addEventListener('hidden.bs.modal', () => {
-            preModal.remove();
-        });
+            // Remove the modal element after it's hidden
+            setTimeout(() => {
+                preModal.remove();
+            }, 100);
+        }, { once: true });
         
         modal.show();
     }
