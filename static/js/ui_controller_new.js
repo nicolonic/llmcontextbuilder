@@ -75,13 +75,8 @@ class UIController {
         // Modals
         this.shortcutsModal = new bootstrap.Modal(document.getElementById('shortcutsModal'));
         this.ignoreModal = new bootstrap.Modal(document.getElementById('ignoreModal'));
-        this.fileUploadModal = new bootstrap.Modal(document.getElementById('fileUploadModal'));
         this.ignoreRulesTextarea = document.getElementById('ignoreRulesTextarea');
         this.saveIgnoreRulesBtn = document.getElementById('saveIgnoreRules');
-        this.confirmFileUploadBtn = document.getElementById('confirmFileUpload');
-        
-        // Store pending file data for modal confirmation
-        this.pendingFileData = null;
         
         this.loadIgnoreRules();
         this.initializePresets();
@@ -93,14 +88,13 @@ class UIController {
         this.helpBtn.addEventListener('click', () => this.showShortcuts());
         
         // Explorer events
-        this.selectFolderBtn.addEventListener('click', () => this.folderInput.click());
+        this.selectFolderBtn.addEventListener('click', () => this.showFolderPicker());
         this.folderInput.addEventListener('change', (e) => this.handleFolderSelect(e));
         this.selectAllBtn.addEventListener('click', () => this.selectAllFiles());
         this.clearSelBtn.addEventListener('click', () => this.clearSelection());
         this.ignoreRulesBtn.addEventListener('click', () => this.ignoreModal.show());
         this.saveIgnoreRulesBtn.addEventListener('click', () => this.saveIgnoreRules());
         this.presetSelect.addEventListener('change', (e) => this.applyPreset(e.target.value));
-        this.confirmFileUploadBtn.addEventListener('click', () => this.confirmFileUpload());
         
         // Tab events
         this.tabButtons.forEach(btn => {
@@ -358,22 +352,26 @@ class UIController {
             return;
         }
         
-        // Store file data for confirmation
-        this.pendingFileData = {
-            rawFiles,
-            files,
-            rootPath: this.getRootPath(files[0])
-        };
+        const rootPath = this.getRootPath(files[0]);
         
-        // Update modal content
-        const fileCountSpan = document.querySelector('.file-count');
-        const folderNameSpan = document.querySelector('.folder-name');
+        // Reset state
+        this.fileMap = {};
+        this.allFiles = files;
         
-        fileCountSpan.textContent = files.length;
-        folderNameSpan.textContent = this.pendingFileData.rootPath;
+        // Update UI
+        this.selectAllBtn.disabled = false;
+        this.clearSelBtn.disabled = false;
+        this.updateExplorerStats();
         
-        // Show custom modal instead of processing immediately
-        this.fileUploadModal.show();
+        // Build and render tree
+        const fileTree = this.buildFileTree(files, rootPath);
+        this.renderDirectoryTree(fileTree, this.directoryTree);
+        
+        // Clear the input for next selection
+        event.target.value = '';
+        
+        // Show success message
+        this.showToast(`Loaded ${files.length} files from ${rootPath}`);
     }
     
     showFolderPicker() {
@@ -401,13 +399,20 @@ class UIController {
                             <div class="info-item">
                                 <i class="bi bi-shield-check text-success"></i>
                                 <div>
-                                    Files are processed <strong>locally in your browser</strong> - nothing is uploaded to any server.
+                                    Files will be processed locally in your browser for analysis and aggregation. 
+                                    <strong>Nothing is uploaded to any server</strong> - everything stays on your computer.
                                 </div>
                             </div>
                             <div class="info-item">
                                 <i class="bi bi-lightning text-warning"></i>
                                 <div>
                                     You'll be able to select specific files after choosing the folder.
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="bi bi-filter text-info"></i>
+                                <div>
+                                    Common files like <code>node_modules</code>, <code>.git</code>, and binaries are automatically filtered.
                                 </div>
                             </div>
                         </div>
@@ -439,31 +444,6 @@ class UIController {
         modal.show();
     }
 
-    confirmFileUpload() {
-        if (!this.pendingFileData) return;
-        
-        const { files, rootPath } = this.pendingFileData;
-        
-        // Reset state
-        this.fileMap = {};
-        this.allFiles = files;
-        
-        // Update UI
-        this.selectAllBtn.disabled = false;
-        this.clearSelBtn.disabled = false;
-        this.updateExplorerStats();
-        
-        // Build and render tree
-        const fileTree = this.buildFileTree(files, rootPath);
-        this.renderDirectoryTree(fileTree, this.directoryTree);
-        
-        // Close modal and show success
-        this.fileUploadModal.hide();
-        this.showToast(`Loaded ${files.length} files from ${rootPath}`);
-        
-        // Clear pending data
-        this.pendingFileData = null;
-    }
 
     updateExplorerStats() {
         const totalFiles = this.allFiles ? this.allFiles.length : 0;
