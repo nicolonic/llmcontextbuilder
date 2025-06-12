@@ -1,5 +1,5 @@
 import logging
-from flask import Flask, render_template, request, jsonify, Response, stream_with_context
+from flask import Flask, render_template, request, jsonify, Response, stream_with_context, send_from_directory
 import os
 import re
 import google.generativeai as genai
@@ -77,6 +77,11 @@ def index():
     if request.args.get('old'):
         return render_template('index.html')
     return render_template('index_new.html')
+
+@app.route('/favicon.ico')
+def favicon():
+    """Serve favicon.ico from static directory."""
+    return send_from_directory('static', 'favicon.ico')
 
 @app.route('/api/summarize', methods=['POST'])
 @require_auth
