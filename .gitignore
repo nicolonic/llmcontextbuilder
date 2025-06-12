@@ -1,3 +1,6 @@
+# IMPORTANT: App Engine config with secrets
+app.yaml
+
 # Python
 __pycache__/
 *.py[cod]
