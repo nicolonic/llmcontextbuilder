@@ -574,7 +574,8 @@
     <!-- Load UI Controller scripts AFTER auth setup -->
     <script src="{{ url_for('static', filename='js/file_handler.js') }}"></script>
     <script src="{{ url_for('static', filename='js/virtual_scroll.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/ui_controller_new.js') }}"></script>
-    <script src="{{ url_for('static', filename='js/ui_bootstrap.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/file_detection.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/ui_controller_new.js') }}"></script>
+    <script type="module" src="{{ url_for('static', filename='js/ui_bootstrap.js') }}"></script>
 </body>
 </html>

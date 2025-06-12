@@ -1,6 +1,9 @@
 // Bootstrap file for initializing UI with Web Worker
 // This creates the worker and passes it to UIController
 
+// Import UIController from the module
+import UIController from './ui_controller_new.js';
+
 // Create the worker
 const fileWorker = new Worker('/static/js/worker/fileWorker.js');
 

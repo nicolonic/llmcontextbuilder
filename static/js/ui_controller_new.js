@@ -1,3 +1,6 @@
+// Import file detection utilities
+import { extractPathCandidates, createPathMatcher, findBestMatch, categorizeMatches } from './file_detection.js';
+
 class UIController {
     constructor(fileWorker) {
         this.fileHandler = new FileHandler();
@@ -7,6 +10,11 @@ class UIController {
         this.lazyLoadEnabled = false; // Default to OFF for immediate loading
         this.activeTab = 'prompt';
         this.lastSelectedIndex = -1; // For shift-click selection
+        
+        // File detection state
+        this.detectSpinner = null;
+        this._fuzzyMatcher = null;
+        this._detectTimeout = null;
         
         this.initializeElements();
         this.attachEventListeners();
@@ -101,9 +109,15 @@ class UIController {
             btn.addEventListener('click', () => this.switchTab(btn.dataset.tab));
         });
         
-        // Prompt events
-        this.promptInput.addEventListener('input', () => {
+        // Prompt events with file detection
+        this.promptInput.addEventListener('input', (e) => {
             this.updatePromptStats();
+            
+            // Debounced file detection
+            clearTimeout(this._detectTimeout);
+            this._detectTimeout = setTimeout(() => {
+                this.autoDetectFiles(e.target.value);
+            }, 500);
         });
         this.generatePromptBtn.addEventListener('click', () => this.generateMetaPrompt());
         
@@ -368,6 +382,7 @@ class UIController {
         // Reset state
         this.fileMap = {};
         this.allFiles = files;
+        this.resetFuzzyMatcher(); // Reset file detection cache
         
         // Update UI
         this.selectAllBtn.disabled = false;
@@ -1705,4 +1720,107 @@ class UIController {
         // TODO: Implement diff view
         // This would show only the changes between versions
     }
+    
+    // ===== File Detection Methods =====
+    
+    showDetectSpinner(msg = 'Detecting files…') {
+        if (this.detectSpinner) return;
+        
+        this.detectSpinner = document.createElement('div');
+        this.detectSpinner.className = 'position-fixed top-0 end-0 m-3 z-2000 d-flex align-items-center bg-body rounded shadow-sm px-3 py-2';
+        this.detectSpinner.innerHTML = `
+            <div class="spinner-border spinner-border-sm me-2" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <span class="small">${msg}</span>
+        `;
+        document.body.appendChild(this.detectSpinner);
+    }
+    
+    hideDetectSpinner() {
+        if (this.detectSpinner) {
+            this.detectSpinner.remove();
+            this.detectSpinner = null;
+        }
+    }
+    
+    async autoDetectFiles(text) {
+        if (!text || !this.allFiles || this.allFiles.length === 0) {
+            return; // No project loaded yet
+        }
+        
+        const candidates = extractPathCandidates(text);
+        if (candidates.length === 0) return;
+        
+        this.showDetectSpinner();
+        
+        // Build or update fuzzy matcher
+        if (!this._fuzzyMatcher) {
+            const paths = Object.keys(this.fileMap);
+            this._fuzzyMatcher = createPathMatcher(paths);
+        }
+        
+        // Categorize matches
+        const matches = categorizeMatches(candidates, this.fileMap, this._fuzzyMatcher);
+        
+        // Process matches
+        const toLoad = [
+            ...matches.exact,
+            ...matches.fuzzy.map(f => f.matched)
+        ];
+        
+        let selectedCount = 0;
+        let alreadySelectedCount = 0;
+        
+        for (const path of toLoad) {
+            const file = this.fileMap[path];
+            if (!file) continue;
+            
+            // Check if already selected
+            if (this.fileHandler.selectedFiles.has(path) || this.fileHandler.pendingFiles.has(path)) {
+                alreadySelectedCount++;
+                continue;
+            }
+            
+            // Select the file
+            await this.handleFileSelect(file);
+            selectedCount++;
+        }
+        
+        // Update stats
+        this.updateBatchActionBar();
+        
+        // Show feedback
+        let message = '';
+        if (selectedCount > 0) {
+            message = `Auto-selected ${selectedCount} file${selectedCount !== 1 ? 's' : ''}`;
+        }
+        if (matches.unmatched.length > 0) {
+            if (message) message += '. ';
+            message += `${matches.unmatched.length} path${matches.unmatched.length !== 1 ? 's' : ''} not found`;
+        }
+        if (alreadySelectedCount > 0) {
+            if (message) message += '. ';
+            message += `${alreadySelectedCount} already selected`;
+        }
+        
+        if (message) {
+            this.showToast(message);
+        }
+        
+        // Log unmatched for debugging
+        if (matches.unmatched.length > 0) {
+            console.log('Unmatched file references:', matches.unmatched);
+        }
+        
+        this.hideDetectSpinner();
+    }
+    
+    // Reset fuzzy matcher when files change
+    resetFuzzyMatcher() {
+        this._fuzzyMatcher = null;
+    }
 }
+
+// Export as default for ES module
+export default UIController;

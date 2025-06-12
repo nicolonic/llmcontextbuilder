@@ -1,0 +1,12 @@
+## Example prompt with file paths
+
+I need help debugging the issue in src/autotouch_chat/services/tool_dispatcher.py where the EntityExtractor is failing. 
+
+The error seems to be coming from the agent_service.py file when it calls the find_similar_companies function.
+
+Can you also check:
+- src/autotouch_chat/services/agent_service.py
+- src/utils/entity_extractor.py
+- tests/test_tool_dispatcher.py
+
+And maybe look at the config in config/settings.json
