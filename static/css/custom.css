@@ -1,0 +1,173 @@
+/* Minimal custom styles to complement Bootstrap */
+/* Toast positioning */
+.toast {
+    z-index: 1050;
+}
+
+/* Directory tree styling */
+.directory-tree {
+    height: calc(100vh - 250px);
+    overflow-y: auto;
+    position: relative;
+}
+
+/* Virtual scrolling container */
+.virtual-scroll-container {
+    position: relative;
+    overflow-y: auto;
+    height: 100%;
+}
+
+.virtual-scroll-spacer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1px;
+    pointer-events: none;
+}
+
+.virtual-scroll-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+}
+
+.directory-item {
+    padding: 0.5rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.directory-item:hover {
+    background-color: var(--bs-primary-bg-subtle);
+}
+
+.directory-item i {
+    width: 1.2rem;
+}
+
+/* Selected files styling */
+.selected-files {
+    max-height: 150px;
+    overflow-y: auto;
+    border-bottom: 1px solid var(--bs-border-color);
+    margin-bottom: 1rem;
+}
+
+.selected-file {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem;
+    background-color: var(--bs-tertiary-bg);
+    margin-bottom: 0.5rem;
+    border-radius: 0.375rem;
+    border: 1px solid var(--bs-border-color);
+    color: var(--bs-emphasis-color);
+    font-weight: 500;
+}
+
+.selected-file span {
+    flex: 1;
+}
+
+.selected-file.text-info {
+    border-color: var(--bs-info);
+    background-color: rgba(var(--bs-info-rgb), 0.1);
+}
+
+.selected-file.pending {
+    opacity: 0.7;
+    background-color: var(--bs-warning-bg-subtle);
+}
+
+/* Content area styling */
+.content-area {
+    background-color: var(--bs-primary-bg);
+    border-radius: 0.375rem;
+    padding: 1rem;
+}
+
+#promptInput {
+    font-family: monospace;
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-tertiary-color);
+    border-color: var(--bs-border-color);
+}
+
+#outputArea {
+    font-family: monospace;
+    white-space: pre;
+    resize: vertical;
+    height: calc(100vh - 550px);
+    min-height: 200px;
+    background-color: var(--bs-tertiary-bg);
+    color: var(--bs-tertiary-color);
+    border-color: var(--bs-border-color);
+}
+
+#fileList {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.list-group-item {
+    cursor: pointer;
+}
+
+.list-group-item.active {
+    border-color: var(--bs-primary);
+}
+
+/* Improve form control focus states */
+.form-control:focus {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 0.25rem rgba(var(--bs-primary-rgb), 0.25);
+}
+
+/* File size badge styling */
+.directory-item .badge {
+    margin-left: auto;
+    font-size: 0.75rem;
+}
+
+/* CodeMirror styling */
+.CodeMirror {
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.375rem;
+    font-family: monospace;
+}
+
+.CodeMirror-gutters {
+    background-color: var(--bs-tertiary-bg);
+    border-right: 1px solid var(--bs-border-color);
+}
+
+/* Stale indicator styling */
+.stale-indicator {
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+/* Generate prompt button */
+#generatePromptBtn {
+    transition: all 0.3s ease;
+}
+
+#generatePromptBtn:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+#generatePromptBtn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
