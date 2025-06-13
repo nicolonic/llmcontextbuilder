@@ -1849,7 +1849,7 @@ class UIController {
         
         // If no candidates, check if we need to remove auto-selected files
         if (candidates.length === 0) {
-            this.removeUnmentionedAutoSelectedFiles([]);
+            await this.removeUnmentionedAutoSelectedFiles([]);
             return;
         }
         
@@ -1872,7 +1872,7 @@ class UIController {
             ];
             
             // Remove auto-selected files that are no longer mentioned
-            this.removeUnmentionedAutoSelectedFiles(toLoad);
+            await this.removeUnmentionedAutoSelectedFiles(toLoad);
             
             let selectedCount = 0;
             let alreadySelectedCount = 0;
@@ -1936,7 +1936,7 @@ class UIController {
     }
     
     // Remove auto-selected files that are no longer mentioned in the prompt
-    removeUnmentionedAutoSelectedFiles(currentlyMentioned) {
+    async removeUnmentionedAutoSelectedFiles(currentlyMentioned) {
         const mentionedSet = new Set(currentlyMentioned);
         const toRemove = [];
         
@@ -1965,7 +1965,6 @@ class UIController {
         // Update UI if files were removed
         if (toRemove.length > 0) {
             this.updateStats();
-            this.updatePreview();
             console.log('[FileDetect] Removed', toRemove.length, 'auto-selected files');
         }
     }
