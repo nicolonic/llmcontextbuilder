@@ -423,6 +423,19 @@ class UIController {
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
+                        <div class="alert alert-warning mb-3">
+                            <h6 class="alert-heading">
+                                <i class="bi bi-exclamation-triangle-fill"></i>
+                                Important: Browser File Count is Misleading
+                            </h6>
+                            <p class="mb-1">
+                                Your browser may show an inflated number like "Upload 16,000+ files" - <strong>this count is misleading!</strong>
+                            </p>
+                            <p class="mb-0">
+                                We automatically filter out irrelevant files (venv, node_modules, .git, etc.). 
+                                <strong>Only your actual code files will be processed</strong> - typically just dozens or hundreds of files, not thousands.
+                            </p>
+                        </div>
                         <div class="folder-picker-info">
                             <div class="info-item">
                                 <i class="bi bi-info-circle text-primary"></i>
