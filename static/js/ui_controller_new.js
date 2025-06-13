@@ -657,14 +657,17 @@ class UIController {
 
     async handleFileSelect(file) {
         const path = file.webkitRelativePath;
+        console.log('[FileDetect] handleFileSelect called for:', path);
         
         if (this.lazyLoadEnabled) {
+            console.log('[FileDetect] Lazy load enabled - adding metadata only');
             // Add metadata only
             this.fileHandler.addFileMetadata(path, file);
             this.updateFileCheckbox(path, true);
             this.updateStats();
             this.updateGenerateButton();
         } else {
+            console.log('[FileDetect] Lazy load disabled - loading content immediately');
             // Load content immediately
             if (this.fileWorker) {
                 const id = `${path}_${Date.now()}`;
@@ -945,6 +948,8 @@ class UIController {
         const { path, text, id } = data;
         const wasLazyLoad = this.fileHandler.pendingFiles.has(path);
         
+        console.log('[FileDetect] handleFileContent received for:', path);
+        
         this.fileHandler.markFileLoaded(path, text);
         
         if (data.metadata) {
@@ -964,6 +969,9 @@ class UIController {
             this.pendingFileReads.delete(id);
         }
         
+        // Update the checkbox to reflect the file is now selected
+        this.updateFileCheckbox(path, true);
+        
         this.updateStats();
         
         if (wasLazyLoad) {
@@ -973,6 +981,8 @@ class UIController {
 
     handleBatchComplete(data) {
         const { batchId, results, errors } = data;
+        
+        console.log('[FileDetect] handleBatchComplete - processing', results.length, 'results');
         
         results.forEach(result => {
             this.fileHandler.markFileLoaded(result.path, result.text);
@@ -984,6 +994,9 @@ class UIController {
                     loaded: true
                 });
             }
+            
+            // Update the checkbox for this file
+            this.updateFileCheckbox(result.path, true);
         });
         
         if (errors.length > 0) {
@@ -1531,11 +1544,34 @@ class UIController {
     }
 
     updateFileCheckbox(path, checked) {
+        console.log('[FileDetect] updateFileCheckbox called:', { path, checked });
+        
         const item = document.querySelector(`[data-path="${path}"]`);
+        console.log('[FileDetect] Found item element:', item);
+        
         if (item) {
             const checkbox = item.querySelector('input[type="checkbox"]');
+            console.log('[FileDetect] Found checkbox:', checkbox);
+            
             if (checkbox) {
                 checkbox.checked = checked;
+                console.log('[FileDetect] Checkbox updated successfully');
+                
+                // Also trigger change event to ensure UI updates
+                checkbox.dispatchEvent(new Event('change', { bubbles: true }));
+            } else {
+                console.warn('[FileDetect] No checkbox found in item for path:', path);
+            }
+        } else {
+            console.warn('[FileDetect] No element found with data-path:', path);
+            
+            // Debug: Log all elements with data-path to see what's available
+            const allPathElements = document.querySelectorAll('[data-path]');
+            console.log('[FileDetect] All elements with data-path:', allPathElements.length);
+            if (allPathElements.length < 10) {
+                allPathElements.forEach(el => {
+                    console.log('[FileDetect]   - data-path:', el.dataset.path);
+                });
             }
         }
     }
@@ -1860,6 +1896,9 @@ class UIController {
             // Update stats
             this.updateStats();
             
+            // Update parent directory checkboxes to reflect new selections
+            this.updateParentDirectoryStates();
+            
             // Show feedback
             let message = '';
             if (selectedCount > 0) {
@@ -1917,14 +1956,8 @@ class UIController {
             if (this.fileHandler.selectedFiles.has(path) || this.fileHandler.pendingFiles.has(path)) {
                 const file = this.fileMap[path];
                 if (file) {
-                    // Find the checkbox and uncheck it
-                    const checkbox = this.fileTree.querySelector(`input[data-path="${path}"]`);
-                    if (checkbox) {
-                        checkbox.checked = false;
-                        // Trigger the deselection
-                        this.fileHandler.deselectFile(path);
-                        this.updateDirectoryCheckboxes(file.parent);
-                    }
+                    // Deselect the file using the existing method
+                    await this.handleFileDeselect(file);
                 }
             }
         }
